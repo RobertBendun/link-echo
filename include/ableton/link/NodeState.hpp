@@ -24,6 +24,7 @@
 #include <ableton/link/SessionId.hpp>
 #include <ableton/link/StartStopState.hpp>
 #include <ableton/link/Timeline.hpp>
+#include <ableton/link/Echo.hpp>
 
 namespace ableton
 {
@@ -33,7 +34,7 @@ namespace link
 struct NodeState
 {
   using Payload =
-    decltype(discovery::makePayload(Timeline{}, SessionMembership{}, StartStopState{}));
+    decltype(discovery::makePayload(Timeline{}, SessionMembership{}, StartStopState{}, Echo{}));
 
   NodeId ident() const
   {
@@ -49,7 +50,7 @@ struct NodeState
   friend Payload toPayload(const NodeState& state)
   {
     return discovery::makePayload(
-      state.timeline, SessionMembership{state.sessionId}, state.startStopState);
+      state.timeline, SessionMembership{state.sessionId}, state.startStopState, state.echo);
   }
 
   template <typename It>
@@ -57,13 +58,16 @@ struct NodeState
   {
     using namespace std;
     auto nodeState = NodeState{std::move(nodeId), {}, {}, {}};
-    discovery::parsePayload<Timeline, SessionMembership, StartStopState>(std::move(begin),
+    discovery::parsePayload<Timeline, SessionMembership, StartStopState, Echo>(std::move(begin),
       std::move(end), [&nodeState](Timeline tl) { nodeState.timeline = std::move(tl); },
       [&nodeState](SessionMembership membership) {
         nodeState.sessionId = std::move(membership.sessionId);
       },
-      [&nodeState](
-        StartStopState ststst) { nodeState.startStopState = std::move(ststst); });
+      [&nodeState](StartStopState ststst) { nodeState.startStopState = std::move(ststst); },
+			[&nodeState](Echo echo) {
+				nodeState.echo = std::move(echo);
+			}
+		);
     return nodeState;
   }
 
@@ -71,6 +75,7 @@ struct NodeState
   SessionId sessionId;
   Timeline timeline;
   StartStopState startStopState;
+	Echo echo{};
 };
 
 } // namespace link

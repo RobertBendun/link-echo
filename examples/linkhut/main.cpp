@@ -87,7 +87,7 @@ void printHelp()
 void printStateHeader()
 {
   std::cout
-    << "enabled | num peers | quantum | start stop sync | tempo   | beats   | metro"
+    << "enabled | num peers | quantum | start stop sync | tempo   | beats   | metro | echo"
     << std::endl;
 }
 
@@ -119,6 +119,8 @@ void printState(const std::chrono::microseconds time,
       std::cout << 'O';
     }
   }
+
+	std::cout << " | " << sessionState.echo();
   clearLine();
 }
 
@@ -184,13 +186,20 @@ void input(State& state)
 
 } // namespace
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
   State state;
-  printHelp();
+
+	printHelp();
   printStateHeader();
   std::thread thread(input, std::ref(state));
   disableBufferedInput();
+
+	if (argc == 2) {
+		auto sessionState = state.link.captureAppSessionState();
+		sessionState.setEcho(argv[1]);
+		state.link.commitAppSessionState(sessionState);
+	}
 
   while (state.running)
   {

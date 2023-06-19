@@ -61,10 +61,20 @@ struct SessionStartStopStateCallback
   std::vector<std::pair<SessionId, StartStopState>> sessionStartStopStates;
 };
 
+struct SessionEchoCallback
+{
+	void operator()(Echo echo)
+	{
+		(void)echo;
+		assert(0 && "unimplemented");
+	}
+};
+
 using PeerVector = std::vector<typename Peers<test::serial_io::Context,
   SessionMembershipCallback,
   SessionTimelineCallback,
-  SessionStartStopStateCallback>::Peer>;
+  SessionStartStopStateCallback,
+	SessionEchoCallback>::Peer>;
 
 void expectPeers(const PeerVector& expected, const PeerVector& actual)
 {
@@ -114,7 +124,7 @@ TEST_CASE("Peers")
   test::serial_io::Fixture io;
 
   auto peers = makePeers(util::injectVal(io.makeIoContext()), std::ref(membership),
-    std::ref(sessions), std::ref(startStops));
+    std::ref(sessions), std::ref(startStops), SessionEchoCallback{});
 
   SECTION("EmptySessionPeersAfterInit")
   {

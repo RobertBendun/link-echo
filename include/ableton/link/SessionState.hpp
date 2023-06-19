@@ -23,6 +23,7 @@
 #include <ableton/link/StartStopState.hpp>
 #include <ableton/link/Timeline.hpp>
 #include <ableton/link/TripleBuffer.hpp>
+#include <ableton/link/Echo.hpp>
 #include <mutex>
 
 namespace ableton
@@ -30,6 +31,7 @@ namespace ableton
 namespace link
 {
 
+using OptionalEcho = Optional<Echo>;
 using OptionalTimeline = Optional<Timeline>;
 using OptionalStartStopState = Optional<StartStopState>;
 using OptionalClientStartStopState = Optional<ClientStartStopState>;
@@ -38,6 +40,7 @@ struct SessionState
 {
   Timeline timeline;
   StartStopState startStopState;
+	Echo echo;
   GhostXForm ghostXForm;
 };
 
@@ -45,8 +48,8 @@ struct ClientState
 {
   friend bool operator==(const ClientState& lhs, const ClientState& rhs)
   {
-    return std::tie(lhs.timeline, lhs.startStopState)
-           == std::tie(rhs.timeline, rhs.startStopState);
+    return std::tie(lhs.timeline, lhs.startStopState, lhs.echo.bytes)
+           == std::tie(rhs.timeline, rhs.startStopState, rhs.echo.bytes);
   }
 
   friend bool operator!=(const ClientState& lhs, const ClientState& rhs)
@@ -56,6 +59,7 @@ struct ClientState
 
   Timeline timeline;
   ClientStartStopState startStopState;
+	Echo echo;
 };
 
 struct ControllerClientState
@@ -104,12 +108,14 @@ struct IncomingClientState
   OptionalTimeline timeline;
   OptionalClientStartStopState startStopState;
   std::chrono::microseconds timelineTimestamp;
+	OptionalEcho echo;
 };
 
 struct ApiState
 {
   Timeline timeline;
   ApiStartStopState startStopState;
+	Echo echo;
 };
 
 } // namespace link

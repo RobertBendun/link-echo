@@ -22,6 +22,7 @@
 #include <ableton/link/GhostXForm.hpp>
 #include <ableton/link/SessionId.hpp>
 #include <ableton/link/Timeline.hpp>
+#include <ableton/link/Echo.hpp>
 
 namespace ableton
 {
@@ -39,6 +40,7 @@ struct Session
   SessionId sessionId;
   Timeline timeline;
   SessionMeasurement measurement;
+	Echo echo;
 };
 
 template <typename Peers,
@@ -72,6 +74,11 @@ public:
     mCurrent = std::move(session);
     mOtherSessions.clear();
   }
+
+	void resetEcho(Echo echo)
+	{
+		mCurrent.echo = echo;
+	}
 
   void resetTimeline(Timeline timeline)
   {

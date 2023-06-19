@@ -244,6 +244,9 @@ public:
   public:
     SessionState(const link::ApiState state, const bool bRespectQuantum);
 
+		std::string echo() const;
+		void setEcho(std::string echo);
+
     /*! @brief: The tempo of the timeline, in Beats Per Minute.
      *
      *  @discussion This is a stable value that is appropriate for display

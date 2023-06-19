@@ -30,7 +30,7 @@ template <typename Clock>
 inline typename BasicLink<Clock>::SessionState toSessionState(
   const link::ClientState& state, const bool isConnected)
 {
-  return {{state.timeline, {state.startStopState.isPlaying, state.startStopState.time}},
+  return {{state.timeline, {state.startStopState.isPlaying, state.startStopState.time}, state.echo},
     isConnected};
 }
 
@@ -46,7 +46,12 @@ inline link::IncomingClientState toIncomingClientState(const link::ApiState& sta
       ? link::OptionalClientStartStopState{{state.startStopState.isPlaying,
           state.startStopState.time, timestamp}}
       : link::OptionalClientStartStopState{};
-  return {timeline, startStopState, timestamp};
+
+	const auto echo = originalState.echo.bytes != state.echo.bytes
+		? link::OptionalEcho{state.echo}
+		: link::OptionalEcho{};
+
+  return {timeline, startStopState, timestamp, echo};
 }
 
 } // namespace detail
@@ -169,6 +174,18 @@ inline BasicLink<Clock>::SessionState::SessionState(
   , mState(state)
   , mbRespectQuantum(bRespectQuantum)
 {
+}
+
+template<typename Clock>
+inline std::string BasicLink<Clock>::SessionState::echo() const
+{
+	return mState.echo.bytes;
+}
+
+template<typename Clock>
+inline void BasicLink<Clock>::SessionState::setEcho(std::string s)
+{
+	mState.echo.bytes = s;
 }
 
 template <typename Clock>

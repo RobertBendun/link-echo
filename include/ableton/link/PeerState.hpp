@@ -56,6 +56,11 @@ struct PeerState
     return nodeState.startStopState;
   }
 
+	Echo echo() const
+	{
+		return nodeState.echo;
+	}
+
   friend bool operator==(const PeerState& lhs, const PeerState& rhs)
   {
     return lhs.nodeState == rhs.nodeState && lhs.endpoint == rhs.endpoint;

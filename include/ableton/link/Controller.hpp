@@ -51,8 +51,8 @@ template <typename Clock>
 inline SessionState initSessionState(const Tempo tempo, const Clock& clock)
 {
   using namespace std::chrono;
-  return {clampTempo(Timeline{tempo, Beats{0.}, microseconds{0}}),
-    StartStopState{false, Beats{0.}, microseconds{0}}, initXForm(clock)};
+  return SessionState{clampTempo(Timeline{tempo, Beats{0.}, microseconds{0}}),
+    StartStopState{false, Beats{0.}, microseconds{0}}, {}, initXForm(clock)};
 }
 
 inline ClientState initClientState(const SessionState& sessionState)
@@ -147,7 +147,8 @@ public:
     , mPeers(util::injectRef(*mIo),
         std::ref(mSessionPeerCounter),
         SessionTimelineCallback{*this},
-        SessionStartStopStateCallback{*this})
+        SessionStartStopStateCallback{*this},
+				SessionEchoCallback{*this})
     , mSessions(
         {mSessionId, mSessionState.timeline, {mSessionState.ghostXForm, mClock.micros()}},
         util::injectRef(mPeers),
@@ -252,6 +253,13 @@ public:
           clientState.startStopState, *newClientState.startStopState);
         clientState.startStopState = *newClientState.startStopState;
       }
+			if (newClientState.echo)
+			{
+				// To simplify choose message that is longer as the new one
+				if (newClientState.echo->bytes.size() > clientState.echo.bytes.size()) {
+					clientState.echo.bytes = newClientState.echo->bytes;
+				}
+			}
     });
     mIo->async([this, newClientState] { handleClientState(newClientState); });
   }
@@ -359,7 +367,7 @@ private:
     // Push the change to the discovery service
     mDiscovery.updateNodeState(
       std::make_pair(NodeState{mNodeId, mSessionId, mSessionState.timeline,
-                       mSessionState.startStopState},
+                       mSessionState.startStopState, mSessionState.echo},
         mSessionState.ghostXForm));
   }
 
@@ -476,6 +484,16 @@ private:
       }
     }
 
+		if (clientState.echo)
+		{
+			if (mSessionState.echo.bytes.size() < clientState.echo->bytes.size())
+			{
+				mSessionState.echo.bytes = clientState.echo->bytes;
+				mSessions.resetEcho(mSessionState.echo);
+				mustUpdateDiscovery = true;
+			}
+		}
+
     if (mustUpdateDiscovery)
     {
       updateDiscovery();
@@ -517,6 +535,9 @@ private:
     }
 
     updateSessionTiming(session.timeline, session.measurement.xform);
+		if (mSessionState.echo.bytes.size() < session.echo.bytes.size()) {
+			mSessionState.echo = session.echo;
+		}
     updateDiscovery();
 
     if (sessionIdChanged)
@@ -547,7 +568,7 @@ private:
     updateSessionTiming(newTl, xform);
     updateDiscovery();
 
-    mSessions.resetSession({mNodeId, newTl, {xform, hostTime}});
+    mSessions.resetSession({mNodeId, newTl, {xform, hostTime}, mClientState.get().echo});
     mPeers.resetPeers();
   }
 
@@ -634,6 +655,16 @@ private:
     Controller& mController;
   };
 
+	struct SessionEchoCallback
+	{
+		void operator()(Echo echo)
+		{
+			mController.setClientState(IncomingClientState { .echo = OptionalEcho{std::move(echo)} });
+		}
+
+		Controller& mController;
+	};
+
   struct SessionPeerCounter
   {
     SessionPeerCounter(Controller& controller, PeerCountCallback callback)
@@ -707,7 +738,8 @@ private:
   using ControllerPeers = Peers<IoType&,
     std::reference_wrapper<SessionPeerCounter>,
     SessionTimelineCallback,
-    SessionStartStopStateCallback>;
+    SessionStartStopStateCallback,
+		SessionEchoCallback>;
 
   using ControllerGateway =
     Gateway<typename ControllerPeers::GatewayObserver, Clock, IoType&>;

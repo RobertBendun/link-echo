@@ -40,7 +40,8 @@ namespace link
 template <typename IoContext,
   typename SessionMembershipCallback,
   typename SessionTimelineCallback,
-  typename SessionStartStopStateCallback>
+  typename SessionStartStopStateCallback,
+	typename SessionEchoCallback>
 class Peers
 {
   // non-movable private implementation type
@@ -52,9 +53,10 @@ public:
   Peers(util::Injected<IoContext> io,
     SessionMembershipCallback membership,
     SessionTimelineCallback timeline,
-    SessionStartStopStateCallback startStop)
+    SessionStartStopStateCallback startStop,
+		SessionEchoCallback echo)
     : mpImpl(std::make_shared<Impl>(
-        std::move(io), std::move(membership), std::move(timeline), std::move(startStop)))
+        std::move(io), std::move(membership), std::move(timeline), std::move(startStop), std::move(echo)))
   {
   }
 
@@ -147,7 +149,7 @@ public:
       auto pImpl = observer.mpImpl;
       auto addr = observer.mAddr;
       assert(pImpl);
-      pImpl->sawPeerOnGateway(std::move(state), std::move(addr));
+      pImpl->sawPeerOnGateway(state, std::move(addr));
     }
 
     friend void peerLeft(GatewayObserver& observer, const NodeId& id)
@@ -180,15 +182,17 @@ private:
     Impl(util::Injected<IoContext> io,
       SessionMembershipCallback membership,
       SessionTimelineCallback timeline,
-      SessionStartStopStateCallback startStop)
+      SessionStartStopStateCallback startStop,
+			SessionEchoCallback echo)
       : mIo(std::move(io))
       , mSessionMembershipCallback(std::move(membership))
       , mSessionTimelineCallback(std::move(timeline))
       , mSessionStartStopStateCallback(std::move(startStop))
+			, mSessionEchoCallback(std::move(echo))
     {
     }
 
-    void sawPeerOnGateway(PeerState peerState, asio::ip::address gatewayAddr)
+    void sawPeerOnGateway(PeerState const& peerState, asio::ip::address gatewayAddr)
     {
       using namespace std;
 
@@ -202,6 +206,8 @@ private:
 
       auto peer = make_pair(std::move(peerState), std::move(gatewayAddr));
       const auto idRange = equal_range(begin(mPeers), end(mPeers), peer, PeerIdComp{});
+
+			mSessionEchoCallback(peerState.echo());
 
       bool didSessionMembershipChange = false;
       if (idRange.first == idRange.second)
@@ -331,6 +337,7 @@ private:
     SessionMembershipCallback mSessionMembershipCallback;
     SessionTimelineCallback mSessionTimelineCallback;
     SessionStartStopStateCallback mSessionStartStopStateCallback;
+		SessionEchoCallback mSessionEchoCallback;
     std::vector<Peer> mPeers; // sorted by peerId, unique by (peerId, addr)
   };
 
@@ -350,18 +357,21 @@ private:
 template <typename Io,
   typename SessionMembershipCallback,
   typename SessionTimelineCallback,
-  typename SessionStartStopStateCallback>
+  typename SessionStartStopStateCallback,
+	typename SessionEchoCallback>
 Peers<Io,
   SessionMembershipCallback,
   SessionTimelineCallback,
-  SessionStartStopStateCallback>
+  SessionStartStopStateCallback,
+	SessionEchoCallback>
 makePeers(util::Injected<Io> io,
   SessionMembershipCallback membershipCallback,
   SessionTimelineCallback timelineCallback,
-  SessionStartStopStateCallback startStopStateCallback)
+  SessionStartStopStateCallback startStopStateCallback,
+	SessionEchoCallback echoCallback)
 {
   return {std::move(io), std::move(membershipCallback), std::move(timelineCallback),
-    std::move(startStopStateCallback)};
+    std::move(startStopStateCallback), std::move(echoCallback)};
 }
 
 } // namespace link

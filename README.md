@@ -1,3 +1,8 @@
+# link-echo
+
+Proof of concept implementation of extending Ableton/Link protocol.
+__This repository is for academic purpose only, if you want Ableton/Link look into [original repository](https://github.com/Ableton/link)__
+
 # Ableton Link
 
 This is the codebase for Ableton Link, a technology that synchronizes musical beat, tempo,
